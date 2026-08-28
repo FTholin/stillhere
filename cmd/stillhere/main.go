@@ -4,16 +4,16 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	"github.com/FTholin/stillhere/internal/api"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+	mux.HandleFunc("GET /healthz", api.Health)
+	mux.HandleFunc("GET /version", api.Version)
 
 	addr := ":" + port()
 	logger.Info("listening", "addr", addr)
