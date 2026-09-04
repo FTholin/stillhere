@@ -95,3 +95,24 @@ func TestDisarm(t *testing.T) {
 	}
 
 }
+
+func TestSwitchFiresAfterInterval(t *testing.T) {
+	clock := NewFakeClock(time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC))
+
+	sw := &Switch{
+		State:       StateArmed,
+		Interval:    30 * 24 * time.Hour,
+		LastCheckIn: clock.Now(),
+	}
+
+	clock.Advance(29 * 24 * time.Hour)
+	if sw.IsOverdue(clock.Now()) {
+		t.Errorf("fired after 29 days, want still armed")
+	}
+
+	clock.Advance(2 * 24 * time.Hour)
+
+	if !sw.IsOverdue(clock.Now()) {
+		t.Error("still armed after 31 days, want fired")
+	}
+}
