@@ -22,6 +22,7 @@ var (
 	ErrNotArmed      = errors.New("switch is not armed")
 	ErrEmptySecret   = errors.New("secret must not be empty")
 	ErrIntervalRange = errors.New("interval must be between 1 minute and 365 days")
+	ErrAlreadyExists = errors.New("switch already exists")
 )
 
 const (
