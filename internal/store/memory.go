@@ -4,18 +4,12 @@ package store
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/FTholin/stillhere/internal/switches"
 )
 
-// ErrDuplicate is returned when creating a switch whose ID already exists.
-var ErrDuplicate = errors.New("switch already exists")
-
-// Package store persists switches. The Store interface hides whether they
-// live in memory or in PostgreSQL.
 type Store interface {
 	Create(ctx context.Context, s *switches.Switch) error
 	Get(ctx context.Context, id string) (*switches.Switch, error)
