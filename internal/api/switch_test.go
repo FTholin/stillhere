@@ -30,7 +30,7 @@ func TestCreateSwitch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := newTestServer()
+			srv, _ := newTestServer(t)
 			req := httptest.NewRequest(http.MethodPost, "/switches", strings.NewReader(tt.body))
 
 			rec := httptest.NewRecorder()
@@ -49,15 +49,16 @@ func TestCreateSwitch(t *testing.T) {
 	}
 }
 
-func newTestServer() *Server {
+func newTestServer(t *testing.T) (*Server, *switches.FakeClock) {
+	t.Helper()
 	clock := switches.NewFakeClock(time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC))
-	return New(store.NewMemory(), clock, slog.New(slog.DiscardHandler))
+	return New(store.NewMemory(), clock, slog.New(slog.DiscardHandler)), clock
 }
 
 func TestCreateNeverLeaksTheSecret(t *testing.T) {
 	const secret = "the pin is 1234"
 
-	srv := newTestServer()
+	srv, _ := newTestServer(t)
 	body := fmt.Sprintf(`{"label":"laptop", "secret":%q, "recipient": "lea@eample.com", "interval":"72h"}`, secret)
 
 	req := httptest.NewRequest(http.MethodPost, "/switches", strings.NewReader(body))
@@ -91,13 +92,13 @@ func TestCreateNeverLeaksTheSecret(t *testing.T) {
 }
 
 func TestAllRoutesAreWired(t *testing.T) {
-	srv := newTestServer()
+	srv, clock := newTestServer(t)
 
 	// Seed one switch so that GET /switches/{id} can succeed: a 404 from
 	// the store would be indistinguishable from a 404 from the router.
 	sw := &switches.Switch{
-		ID: "seeded", State: switches.StateArmed,
-		Interval: time.Hour, LastCheckIn: srv.clock.Now(),
+		ID: "seeded", CheckInToken: "seeded-token", State: switches.StateArmed,
+		Interval: time.Hour, LastCheckIn: clock.Now(),
 	}
 	if err := srv.store.Create(context.Background(), sw); err != nil {
 		t.Fatalf("seed failed: %v", err)
@@ -111,6 +112,8 @@ func TestAllRoutesAreWired(t *testing.T) {
 		{http.MethodGet, "/version"},
 		{http.MethodPost, "/switches"},
 		{http.MethodGet, "/switches/seeded"},
+		{http.MethodGet, "/checkin/seeded-token"},
+		{http.MethodPost, "/checkin/seeded-token"},
 	}
 
 	for _, rt := range routes {
@@ -130,7 +133,7 @@ func TestAllRoutesAreWired(t *testing.T) {
 }
 
 func TestMethodNotAllowed(t *testing.T) {
-	srv := newTestServer()
+	srv, _ := newTestServer(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/switches", nil)
 	rec := httptest.NewRecorder()
@@ -147,10 +150,10 @@ func TestMethodNotAllowed(t *testing.T) {
 }
 
 func TestGetSwitch(t *testing.T) {
-	srv := newTestServer()
+	srv, clock := newTestServer(t)
 
 	sw := &switches.Switch{
-		ID: "abc", State: switches.StateArmed, Interval: time.Hour, LastCheckIn: srv.clock.Now(),
+		ID: "abc", State: switches.StateArmed, Interval: time.Hour, LastCheckIn: clock.Now(),
 	}
 
 	if err := srv.store.Create(context.Background(), sw); err != nil {

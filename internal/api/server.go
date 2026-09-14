@@ -72,7 +72,8 @@ func (srv *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /version", Version) // free function: needs nothing
 	mux.HandleFunc("POST /switches", srv.handleCreate)
 	mux.HandleFunc("GET /switches/{id}", srv.handleGet)
-
+	mux.HandleFunc("GET /checkin/{token}", srv.handleCheckInPage)
+	mux.HandleFunc("POST /checkin/{token}", srv.handleCheckIn)
 	return mux
 }
 

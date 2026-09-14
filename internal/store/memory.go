@@ -20,12 +20,39 @@ type Store interface {
 }
 
 type Memory struct {
-	mu   sync.RWMutex
-	data map[string]*switches.Switch
+	mu        sync.RWMutex
+	data      map[string]*switches.Switch
+	byCheckIn map[string]string // token → id
+	byReveal  map[string]string // token → id
 }
 
 func NewMemory() *Memory {
-	return &Memory{data: make(map[string]*switches.Switch)}
+	return &Memory{
+		data:      make(map[string]*switches.Switch),
+		byCheckIn: make(map[string]string),
+		byReveal:  make(map[string]string),
+	}
+}
+
+func (m *Memory) ByCheckInToken(ctx context.Context, token string) (*switches.Switch, error) {
+	if token == "" {
+		return nil, switches.ErrNotFound
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	id, ok := m.byCheckIn[token]
+	if !ok {
+		return nil, switches.ErrNotFound
+	}
+	sw, ok := m.data[id]
+	if !ok {
+		return nil, switches.ErrNotFound // index out of sync: treat as absent
+	}
+
+	cp := *sw
+	return &cp, nil
 }
 
 func (m *Memory) Get(ctx context.Context, id string) (*switches.Switch, error) {
@@ -41,16 +68,18 @@ func (m *Memory) Get(ctx context.Context, id string) (*switches.Switch, error) {
 	return &cp, nil
 }
 
-func (m *Memory) Create(ctx context.Context, s *switches.Switch) error {
+func (m *Memory) Create(ctx context.Context, sw *switches.Switch) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, exists := m.data[s.ID]; exists {
+	if _, exists := m.data[sw.ID]; exists {
 		return switches.ErrAlreadyExists
 	}
 
-	cp := *s
-	m.data[s.ID] = &cp
+	cp := *sw
+	m.data[sw.ID] = &cp
+	m.byCheckIn[sw.CheckInToken] = sw.ID
+	m.byReveal[sw.RevealToken] = sw.ID
 	return nil
 }
 
@@ -80,20 +109,6 @@ func (m *Memory) Save(ctx context.Context, s *switches.Switch) error {
 	m.data[s.ID] = &cp
 
 	return nil
-}
-
-func (m *Memory) ByCheckInToken(ctx context.Context, token string) (*switches.Switch, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	for _, s := range m.data {
-		if s.CheckInToken == token {
-			cp := *s
-			return &cp, nil
-		}
-	}
-
-	return nil, switches.ErrNotFound
 }
 
 func (m *Memory) ByRevealToken(ctx context.Context, token string) (*switches.Switch, error) {

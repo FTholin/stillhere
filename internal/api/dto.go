@@ -30,3 +30,10 @@ type switchResponse struct {
 	LastCheckIn time.Time `json:"last_check_in"`
 	Deadline    time.Time `json:"deadline"`
 }
+
+// checkInResponse tells the owner what changed. No token, no secret.
+type checkInResponse struct {
+	State       string    `json:"state"`
+	LastCheckIn time.Time `json:"last_check_in"`
+	Deadline    time.Time `json:"deadline"`
+}

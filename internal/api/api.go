@@ -1,7 +1,9 @@
 // Package api exposes the HTTP layer of stillhere
 package api
 
-import "net/http"
+import (
+	"net/http"
+)
 
 func Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
