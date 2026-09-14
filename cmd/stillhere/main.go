@@ -4,21 +4,25 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/FTholin/stillhere/internal/api"
+	"github.com/FTholin/stillhere/internal/store"
+	"github.com/FTholin/stillhere/internal/switches"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	mux := http.NewServeMux()
+	srv := api.New(store.NewMemory(), switches.SystemClock{}, logger)
 
-	mux.HandleFunc("GET /healthz", api.Health)
-	mux.HandleFunc("GET /version", api.Version)
+	s := &http.Server{
+		Addr:              ":" + port(),
+		Handler:           srv.Routes(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
-	addr := ":" + port()
-	logger.Info("listening", "addr", addr)
-
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	logger.Info("listening", "addr", s.Addr)
+	if err := s.ListenAndServe(); err != nil {
 		logger.Error("server failed", "err", err)
 		os.Exit(1)
 	}

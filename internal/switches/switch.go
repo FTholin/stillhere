@@ -42,6 +42,26 @@ type Switch struct {
 	RevealToken  string
 }
 
+// New validates the inputs and returns an armed switch. Identifiers are
+// assigned by the caller: the domain does not know what a token is.
+func New(label, recipient string, secret []byte, interval time.Duration, now time.Time) (*Switch, error) {
+	if len(secret) == 0 {
+		return nil, ErrEmptySecret
+	}
+	if interval < MinInterval || interval > MaxInterval {
+		return nil, ErrIntervalRange
+	}
+
+	return &Switch{
+		Label:       label,
+		Recipient:   recipient,
+		Secret:      secret,
+		Interval:    interval,
+		LastCheckIn: now,
+		State:       StateArmed,
+	}, nil
+}
+
 // Deadline is the instant past which the switch fires
 func (s *Switch) Deadline() time.Time {
 	return s.LastCheckIn.Add(s.Interval)
